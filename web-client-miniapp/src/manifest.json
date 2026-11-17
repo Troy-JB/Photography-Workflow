@@ -1,0 +1,15 @@
+{
+  "name": "摄影预约客户中心",
+  "appid": "__UNI__PWFCLIENT",
+  "description": "面向摄影客户的预约与拍摄项目中心",
+  "versionName": "0.1.0",
+  "versionCode": "10",
+  "mp-weixin": {
+    "appid": "wxf9e6401dd4c59bbd",
+    "setting": { "urlCheck": true, "es6": true, "postcss": true, "minified": true },
+    "usingComponents": true,
+    "permission": {
+      "scope.userPhoneNumber": { "desc": "用于预约联系与项目通知" }
+    }
+  }
+}

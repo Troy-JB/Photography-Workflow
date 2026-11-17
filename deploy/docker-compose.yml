@@ -1,0 +1,184 @@
+name: pwf
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pwf
+      POSTGRES_PASSWORD: pwf
+      POSTGRES_DB: pwf
+    ports:
+      - "${PWF_PG_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pwf -d pwf"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  migrate:
+    build:
+      context: ../server
+      dockerfile: Dockerfile
+    command: ["./migrate", "-dir", "up"]
+    environment:
+      PWF_DATABASE__MIGRATE_URL: postgres://pwf:pwf@postgres:5432/pwf?sslmode=disable
+      PWF_DATABASE__URL: postgres://pwf:pwf@postgres:5432/pwf?sslmode=disable
+      PWF_AUTH__JWT_SECRET: ${PWF_AUTH__JWT_SECRET:-dev-only-change-me}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  seed:
+    build:
+      context: ../server
+      dockerfile: Dockerfile
+    command: ["./seed"]
+    environment:
+      PWF_DATABASE__MIGRATE_URL: postgres://pwf:pwf@postgres:5432/pwf?sslmode=disable
+      PWF_DATABASE__URL: postgres://pwf:pwf@postgres:5432/pwf?sslmode=disable
+      PWF_AUTH__JWT_SECRET: ${PWF_AUTH__JWT_SECRET:-dev-only-change-me}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
+  api:
+    build:
+      context: ../server
+      dockerfile: Dockerfile
+    command: ["./api"]
+    environment:
+      PWF_ENV: development
+      PWF_HTTP__ADDR: ":8080"
+      PWF_DATABASE__URL: postgres://pwf_app:pwf-app@postgres:5432/pwf?sslmode=disable
+      PWF_DATABASE__MIGRATE_URL: postgres://pwf:pwf@postgres:5432/pwf?sslmode=disable
+      PWF_DATABASE__WORKER_URL: postgres://pwf_worker:pwf-worker@postgres:5432/pwf?sslmode=disable
+      PWF_AUTH__JWT_SECRET: ${PWF_AUTH__JWT_SECRET:-dev-only-change-me}
+      PWF_STORAGE__ENDPOINT: minio:9000
+      PWF_STORAGE__PUBLIC_BASE_URL: http://localhost:${PWF_MINIO_PORT:-8500}/pwf
+      PWF_STORAGE__ACCESS_KEY: pwf
+      PWF_STORAGE__SECRET_KEY: pwf-secret
+      PWF_STORAGE__BUCKET: pwf
+      PWF_ESIGN__SIGN_BASE_URL: http://localhost:${PWF_API_PORT:-8080}/sign
+      PWF_PAYMENT__PAY_BASE_URL: http://localhost:${PWF_API_PORT:-8080}/pay
+      PWF_GALLERY__PUBLIC_BASE_URL: http://localhost:${PWF_GALLERY_PORT:-5174}
+      PWF_DELIVERY__PUBLIC_BASE_URL: http://localhost:${PWF_GALLERY_PORT:-5174}
+      PWF_CUSTOMER__PUBLIC_BASE_URL: http://localhost:${PWF_MINIAPP_PORT:-5173}
+      PWF_CUSTOMER__DEV_LOGIN: "true"
+    ports:
+      - "${PWF_API_PORT:-8080}:8080"
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/healthz || exit 1"]
+      interval: 10s
+      timeout: 4s
+      retries: 12
+      start_period: 10s
+
+  worker:
+    build:
+      context: ../server
+      dockerfile: Dockerfile
+    command: ["./worker"]
+    environment:
+      PWF_ENV: development
+      PWF_DATABASE__URL: postgres://pwf_worker:pwf-worker@postgres:5432/pwf?sslmode=disable
+      PWF_DATABASE__MIGRATE_URL: postgres://pwf:pwf@postgres:5432/pwf?sslmode=disable
+      PWF_DATABASE__WORKER_URL: postgres://pwf_worker:pwf-worker@postgres:5432/pwf?sslmode=disable
+      PWF_AUTH__JWT_SECRET: ${PWF_AUTH__JWT_SECRET:-dev-only-change-me}
+      PWF_STORAGE__ENDPOINT: minio:9000
+      PWF_STORAGE__PUBLIC_BASE_URL: http://localhost:${PWF_MINIO_PORT:-8500}/pwf
+      PWF_STORAGE__ACCESS_KEY: pwf
+      PWF_STORAGE__SECRET_KEY: pwf-secret
+      PWF_STORAGE__BUCKET: pwf
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      minio:
+        condition: service_healthy
+
+  web-admin:
+    build:
+      context: ../web-admin
+      dockerfile: Dockerfile
+    ports:
+      - "5175:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  web-gallery:
+    build:
+      context: ../web-gallery
+      dockerfile: Dockerfile
+    ports:
+      - "${PWF_GALLERY_PORT:-5174}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  web-client:
+    build:
+      context: ../web-client-miniapp
+      dockerfile: Dockerfile
+      args:
+        VITE_GALLERY_BASE_URL: http://localhost:${PWF_GALLERY_PORT:-5174}
+    ports:
+      - "${PWF_MINIAPP_PORT:-5176}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      # 6379 is already taken on this host; 6380 keeps the dev stack isolated.
+      - "6380:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  minio:
+    # MinIO removed its Docker Hub images in Sep 2026; dev uses this community
+    # mirror. Production targets OSS/COS, so only local development depends on it.
+    # The digest is pinned so a rebuilt "latest" cannot change CI behaviour.
+    image: pgsty/minio@sha256:b6bfe7239bfc83fb90d31612d9704d86039dd714f7904b3f1ad68f211e602372
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: pwf
+      MINIO_ROOT_PASSWORD: pwf-secret
+    ports:
+      - "${PWF_MINIO_PORT:-8500}:9000"
+      - "${PWF_MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    ports:
+      # 3000 is inside a Windows reserved port range on this host.
+      - "3800:3000"
+    command: ["gotenberg", "--api-timeout=30s"]
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:

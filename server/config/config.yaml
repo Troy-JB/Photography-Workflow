@@ -1,0 +1,175 @@
+env: "development"
+
+http:
+  addr: ":8080"
+  request_timeout: "15s"
+  # Comma-separated exact browser origins for a separately hosted admin app.
+  cors_origins: ""
+
+database:
+  url: "postgres://pwf_app:pwf-app@localhost:5432/pwf?sslmode=disable"
+  migrate_url: "postgres://pwf:pwf@localhost:5432/pwf?sslmode=disable"
+  worker_url: "postgres://pwf_worker:pwf-worker@localhost:5432/pwf?sslmode=disable"
+  max_conns: 20
+  min_conns: 2
+
+auth:
+  jwt_secret: "dev-only-change-me"
+  access_ttl: "15m"
+  refresh_ttl: "720h"
+
+storage:
+  driver: "minio"
+  endpoint: "localhost:8500"
+  access_key: "pwf"
+  secret_key: "pwf-secret"
+  bucket: "pwf"
+  use_ssl: false
+  region: "us-east-1"
+  public_base_url: "http://localhost:8500/pwf"
+
+worker:
+  poll_interval: "2s"
+  batch_size: 10
+
+esign:
+  provider: "sandbox"
+  # Development HMAC secret; production must inject a secret-managed value.
+  callback_secret: "dev-only-esign-secret-change-me"
+  sign_base_url: "http://localhost:8080/sign"
+  callback_tolerance: "5m"
+
+payment:
+  provider: "sandbox"
+  # Development HMAC secret; production providers verify vendor signatures.
+  callback_secret: "dev-only-payment-secret-change-me"
+  merchant_id: "sandbox-merchant-001"
+  pay_base_url: "http://localhost:8080/pay"
+  callback_tolerance: "5m"
+  order_ttl: "30m"
+
+alerts:
+  # Leave empty to record alerts without webhook delivery.
+  webhook_url: ""
+  webhook_secret: "dev-only-alerts-secret-change-me"
+  webhook_timeout: "10s"
+
+invoice:
+  # manual: operators record numbers issued in the tax system. A vendor adapter
+  # (e-invoice API) can be added behind the same interface.
+  provider: "manual"
+
+schedule:
+  # Availability rules and hold expiry are interpreted in this zone.
+  timezone: "Asia/Shanghai"
+  # How long a booking holds its slots before the worker releases them.
+  hold_ttl: "30m"
+
+reminders:
+  # In-app notifications always record; the webhook is optional and signed with
+  # the same t=,v1= scheme as payment alerts.
+  enabled: true
+  # Comma-separated leads before the shoot, descending. Zero disables a lead.
+  shoot_leads: "24h,2h"
+  auth_lead: "24h"
+  hold_lead: "10m"
+  webhook_url: ""
+  webhook_secret: "dev-only-reminders-secret-change-me"
+  webhook_timeout: "10s"
+
+agent:
+  # Heartbeats echo this version so older Windows agents prompt for an upgrade.
+  # Empty disables the minimum-version check.
+  min_version: ""
+
+gallery:
+  # Signed image URLs handed to the customer app. Images never pass through
+  # the API, so this is the only TTL that controls preview leakage.
+  presign_ttl: "15m"
+  session_ttl: "2h"
+  selection_batch: 200
+  max_assets: 5000
+  # Watermark drawn on display previews. Empty uses the Lumeo brand name.
+  watermark_text: ""
+  # Font file that covers the watermark characters (production requires one,
+  # e.g. Noto Sans CJK). Empty uses the embedded Latin fallback.
+  watermark_font: ""
+  # How long before expiry the staff deadline reminder is queued.
+  reminder_lead: "24h"
+  # Origin of the customer H5 app; share links are built from it.
+  public_base_url: "http://localhost:5174"
+
+proof:
+  # Customer proof sessions never outlive their round token. Links default to
+  # due_at + token_grace so a late round does not strand the customer.
+  session_ttl: "4h"
+  token_grace: "168h"
+  max_assets: 500
+  annotation_max_bytes: 16384
+
+integrations:
+  # manual: staff upload revisions in the admin app. folder_watch: files are
+  # exchanged through shared directories. ftp/pixcake/xiangxiang are interface
+  # stubs and refuse to boot.
+  provider: "manual"
+  folder_watch:
+    # Shared root with outgoing/<task>/ and incoming/<task>/ subdirectories.
+    root: ""
+    poll_interval: "30s"
+    overdue_after: "72h"
+
+notify:
+  email:
+    # Enables customer proof mail. Production requires it with TLS.
+    enabled: false
+    host: ""
+    port: 587
+    username: ""
+    password: ""
+    from: ""
+    # starttls (587), tls (implicit, 465) or none (local sink only).
+    tls: "starttls"
+    timeout: "20s"
+  sms:
+    # Only the sandbox recorder is implemented; production rejects it.
+    provider: ""
+
+delivery:
+  # Origin of the customer app; empty falls back to gallery.public_base_url.
+  public_base_url: ""
+  # A delivery session lasts at most this long and never outlives its token.
+  session_ttl: "30m"
+  # Default and maximum lifetime of a download link.
+  default_token_ttl: "336h"
+  max_token_ttl: "720h"
+  # Signed package/item URLs; images never pass through the API.
+  presign_ttl: "5m"
+  max_downloads: 20
+  max_assets: 300
+  # Scratch directory for package assembly; empty uses the OS temp dir.
+  temp_dir: ""
+  # Long edge of the no-watermark JPEG in the web package.
+  web_edge: 2048
+  # When true, a delivery fails if any asset cannot produce a web render.
+  require_web_spec: false
+
+archive:
+  # How often the worker picks up finished projects and retention warnings.
+  sweep_interval: "5m"
+  # Tenant defaults; owners can change them per tenant in the admin app.
+  default_keep_days: 365
+  default_warn_days: 30
+
+public_leads:
+  # Public Lumeo inquiry intake is disabled until both values are configured.
+  tenant_id: ""
+  origins: ""
+
+customer:
+  # WeChat Mini Program customer portal. Dev login is rejected in production.
+  wechat_app_id: ""
+  wechat_app_secret: ""
+  dev_login: false
+  access_ttl: "2h"
+  refresh_ttl: "720h"
+  public_base_url: "http://localhost:5173"

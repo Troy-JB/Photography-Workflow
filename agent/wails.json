@@ -1,0 +1,19 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "PWF Agent",
+  "outputfilename": "PWF Agent",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "Photography Workflow",
+    "email": "noreply@photography-workflow.local"
+  },
+  "info": {
+    "productName": "PWF Agent",
+    "productVersion": "0.4.0",
+    "copyright": "Copyright 2026 Photography Workflow",
+    "comments": "Capture agent for the photography workflow platform"
+  }
+}

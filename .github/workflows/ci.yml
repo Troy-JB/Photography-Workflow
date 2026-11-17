@@ -1,0 +1,103 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - name: gofmt
+        run: test -z "$(gofmt -l .)"
+      - name: vet
+        run: go vet ./...
+      - name: test
+        run: go test -race ./...
+
+  agent-unit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: agent/go.mod
+          cache-dependency-path: agent/go.sum
+      - name: gofmt
+        run: test -z "$(gofmt -l .)"
+      - name: vet
+        run: go vet ./...
+      - name: test
+        run: go test -race ./...
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: agent/frontend/package-lock.json
+      - name: frontend typecheck + build
+        working-directory: agent/frontend
+        run: npm ci && npm run build
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            web-admin/package-lock.json
+            web-gallery/package-lock.json
+            web-client-miniapp/package-lock.json
+      - name: admin + Lumeo typecheck, unit tests, build
+        working-directory: web-admin
+        run: npm ci && npm run typecheck && npm test && npm run build
+      - name: gallery typecheck, unit tests, build
+        working-directory: web-gallery
+        run: npm ci && npm run typecheck && npm test && npm run build
+      - name: client miniapp typecheck and platform builds
+        working-directory: web-client-miniapp
+        run: npm ci && npm run typecheck && npm run build:h5 && npm run build:mp-weixin
+  integration:
+    needs: [unit, agent-unit]
+    runs-on: ubuntu-latest
+    env:
+      PWF_CI_AGENT: "1"
+      PWF_CI_WEB: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            web-admin/package-lock.json
+            web-gallery/package-lock.json
+            web-client-miniapp/package-lock.json
+      - name: integration smoke
+        run: bash scripts/ci.sh
+      - name: upload logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-logs
+          path: |
+            deploy/.ci
+            deploy/.ci-gallery
+          if-no-files-found: ignore

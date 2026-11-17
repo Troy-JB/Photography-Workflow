@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>拍摄通告单 · {{.ProjectCode}} · v{{.Version}}</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 32px; color: #1f2328; background: #fff;
+    font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+      "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+  header { border-bottom: 2px solid #1f2328; padding-bottom: 12px; margin-bottom: 20px; }
+  h1 { margin: 0 0 6px; font-size: 24px; letter-spacing: 1px; }
+  h2 { margin: 24px 0 10px; font-size: 16px; border-left: 4px solid #1f2328; padding-left: 8px; }
+  .meta { color: #57606a; font-size: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 24px; }
+  .field { border-bottom: 1px solid #eaeef2; padding: 4px 0; }
+  .label { color: #57606a; margin-right: 8px; }
+  ul { margin: 6px 0; padding-left: 20px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  th, td { border: 1px solid #d0d7de; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: #f6f8fa; font-weight: 600; }
+  .muted { color: #8c959f; }
+  footer { margin-top: 28px; padding-top: 10px; border-top: 1px solid #d0d7de;
+    color: #57606a; font-size: 11px; word-break: break-all; }
+  @media print {
+    body { padding: 0; }
+    h2 { break-after: avoid; }
+    table { break-inside: auto; }
+    tr { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>拍摄通告单</h1>
+  <div class="meta">{{.ProjectCode}} · {{.ProjectTitle}} · 版本 v{{.Version}}</div>
+  <div class="meta">冻结时间 {{.FrozenAt}}（{{.Timezone}}）</div>
+</header>
+
+<h2>拍摄安排</h2>
+<div class="grid">
+  <div class="field"><span class="label">开始</span>{{.StartsAt}}</div>
+  <div class="field"><span class="label">结束</span>{{.EndsAt}}</div>
+  <div class="field"><span class="label">预约</span>{{.BookingID}}</div>
+  <div class="field"><span class="label">客户</span>{{.ClientName}}{{if .ClientInfo}}（{{.ClientInfo}}）{{end}}</div>
+  {{if .Resources}}<div class="field"><span class="label">资源</span>{{range $i, $r := .Resources}}{{if $i}}、{{end}}{{$r}}{{end}}</div>{{end}}
+  {{if .Note}}<div class="field"><span class="label">备注</span>{{.Note}}</div>{{end}}
+  {{if .BriefVenue}}<div class="field"><span class="label">场地</span>{{.BriefVenue}}</div>{{end}}
+</div>
+
+{{if .HasBrief}}
+<h2>拍摄简报</h2>
+<div class="grid">
+  {{if .BriefStyle}}<div class="field"><span class="label">风格</span>{{.BriefStyle}}</div>{{end}}
+  <div class="field"><span class="label">计划张数</span>{{.BriefShots}}</div>
+  {{if .BriefNeeds}}<div class="field"><span class="label">要求</span>{{.BriefNeeds}}</div>{{end}}
+</div>
+{{end}}
+
+<h2>分镜清单{{if .HasShotList}}（完成 {{.ShotDone}} / {{.ShotTotal}}）{{end}}</h2>
+{{if .HasShotList}}
+  {{if .ShotListName}}<div class="meta">{{.ShotListName}}</div>{{end}}
+  {{if .ShotListNote}}<div class="meta">{{.ShotListNote}}</div>{{end}}
+  {{if .Shots}}
+  <table>
+    <thead><tr><th>#</th><th>分类</th><th>标题</th><th>优先级</th><th>状态</th><th>参考</th><th>说明</th></tr></thead>
+    <tbody>
+      {{range .Shots}}
+      <tr>
+        <td>{{.Index}}</td>
+        <td>{{.Category}}</td>
+        <td>{{.Title}}</td>
+        <td>{{.Priority}}</td>
+        <td>{{.Done}}</td>
+        <td>{{if .Reference}}<span class="muted">{{.Reference}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
+        <td>{{.Description}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}<p class="muted">清单尚未添加条目。</p>{{end}}
+{{else}}
+  <p class="muted">未创建分镜清单。</p>
+{{end}}
+
+<h2>器材清单</h2>
+{{if .Gear}}
+<table>
+  <thead><tr><th>名称</th><th>分类</th><th>数量</th><th>核对</th><th>关联资源</th></tr></thead>
+  <tbody>
+    {{range .Gear}}
+    <tr><td>{{.Name}}</td><td>{{.Category}}</td><td>{{.Quantity}}</td><td>{{.Checked}}</td><td>{{.Resource}}</td></tr>
+    {{end}}
+  </tbody>
+</table>
+{{else}}<p class="muted">暂无器材记录。</p>{{end}}
+
+<h2>授权状态</h2>
+{{if .Auths}}
+<table>
+  <thead><tr><th>类型</th><th>对象</th><th>状态</th><th>签署时间</th></tr></thead>
+  <tbody>
+    {{range .Auths}}
+    <tr><td>{{.Kind}}</td><td>{{.Subject}}</td><td>{{.Status}}</td><td>{{.SignedAt}}</td></tr>
+    {{end}}
+  </tbody>
+</table>
+{{else}}<p class="muted">暂无授权记录。</p>{{end}}
+
+<footer>
+  本通告由系统从冻结快照渲染，不可在此页面修改。版本 v{{.Version}} · 快照 SHA-256：{{.SHA256}}
+</footer>
+</body>
+</html>

@@ -1,0 +1,47 @@
+# Go
+server/bin/
+server/.gocache/
+*.exe
+*.test
+*.out
+
+# Local env / secrets
+.env
+
+# Node / frontend
+node_modules/
+dist/
+.wails/
+web-admin/dist/
+web-gallery/dist/
+web-client-miniapp/dist/
+agent/frontend/node_modules/
+agent/frontend/wailsjs/
+agent/build/bin/
+agent/build/nsis-out/
+agent/build/nsis-stage/
+agent/.tmp-*/
+
+# Agent local state
+*.sqlite
+*.sqlite-journal
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Local CI artifacts and generated code graph
+deploy/.ci/
+deploy/.ci-gallery/
+deploy/.ci-migrations/
+deploy/.drill/
+graphify-out/
+
+# Local test tool state and generated screenshots
+.playwright-cli/
+output/

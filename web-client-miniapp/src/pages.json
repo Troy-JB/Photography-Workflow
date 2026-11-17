@@ -1,0 +1,40 @@
+{
+  "pages": [
+    {
+      "path": "pages/auth/auth",
+      "style": { "navigationStyle": "custom", "navigationBarTitleText": "登录 / 注册", "navigationBarBackgroundColor": "#f7f0e9", "navigationBarTextStyle": "black", "backgroundColor": "#f7f0e9" }
+    },
+    {
+      "path": "pages/index/index",
+      "style": { "navigationBarTitleText": "客户中心", "navigationBarBackgroundColor": "#f0e4d8", "navigationBarTextStyle": "black" }
+    },
+    {
+      "path": "pages/invite/invite",
+      "style": { "navigationBarTitleText": "选择拍摄服务", "navigationBarTextStyle": "black", "navigationBarBackgroundColor": "#f0e4d8" }
+    },
+    {
+      "path": "pages/projects/projects",
+      "style": { "navigationBarTitleText": "我的拍摄", "navigationBarBackgroundColor": "#f0e4d8", "navigationBarTextStyle": "black" }
+    },
+    {
+      "path": "pages/share/share",
+      "style": { "navigationBarTitleText": "客户分享内容", "navigationBarBackgroundColor": "#f0e4d8", "navigationBarTextStyle": "black" }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarBackgroundColor": "#f0e4d8",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f0e4d8",
+    "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "color": "#705c50",
+    "selectedColor": "#a65436",
+    "backgroundColor": "#faf5ef",
+    "borderStyle": "black",
+    "list": [
+      { "pagePath": "pages/index/index", "text": "预约" },
+      { "pagePath": "pages/projects/projects", "text": "我的拍摄" }
+    ]
+  }
+}

@@ -1,0 +1,81 @@
+name: agent-windows
+
+on:
+  push:
+    paths:
+      - "agent/**"
+      - "scripts/agent-e2e.sh"
+      - ".github/workflows/agent-windows.yml"
+  pull_request:
+    paths:
+      - "agent/**"
+      - "scripts/agent-e2e.sh"
+      - ".github/workflows/agent-windows.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: agent/go.mod
+          cache-dependency-path: agent/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: agent/frontend/package-lock.json
+
+      - name: gofmt
+        working-directory: agent
+        run: test -z "$(gofmt -l .)"
+      - name: vet
+        working-directory: agent
+        run: go vet ./...
+      - name: test
+        working-directory: agent
+        run: CGO_ENABLED=0 go test ./...
+      - name: gallery preview generation + derivative upload
+        working-directory: agent
+        run: CGO_ENABLED=0 go test ./internal/preview ./internal/upload -run 'Gallery|Derivative' -v
+      - name: selftest
+        working-directory: agent
+        run: CGO_ENABLED=0 go run ./cmd/pwf-agent selftest
+
+      - name: frontend typecheck + build
+        working-directory: agent/frontend
+        run: npm ci && npm run build
+
+      - name: install wails
+        working-directory: agent
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.0
+          echo "$(go env GOPATH)/bin" >>"$GITHUB_PATH"
+      - name: build GUI
+        working-directory: agent
+        run: wails build -tags wails -skipbindings -s
+
+      - name: headless import E2E
+        run: bash scripts/agent-e2e.sh
+
+      - name: install NSIS
+        run: choco install nsis -y --no-progress
+      - name: package dev installer
+        working-directory: agent
+        run: |
+          export MAKENSIS="${MAKENSIS:-/c/Program Files (x86)/NSIS/makensis.exe}"
+          VERSION=0.0.0-ci CHANNEL=dev bash build/package.sh
+
+      - name: upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: pwf-agent-installer
+          path: agent/dist/0.0.0-ci
+          if-no-files-found: error
